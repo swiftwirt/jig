@@ -4,7 +4,7 @@ A sophisticated micro:bit-based robot with servo-controlled directional sonar, d
 
 ## 🚀 Features
 
-- **Dual Motor Control**: Independent left/right motor control with H-bridge drivers
+- **Dual Motor Control**: Independent left/right motor control with L298N Mini driver
 - **Servo-Controlled Sonar**: Directional obstacle detection (0° forward, 180° backward)
 - **Dynamic Configuration**: Adjustable motor speeds and safe distances via Bluetooth
 - **Real-time Telemetry**: Live sensor data transmission
@@ -18,27 +18,27 @@ A sophisticated micro:bit-based robot with servo-controlled directional sonar, d
 ```
     micro:bit Pinout
     ┌─────────────────────────┐
-    │  P0  P1  P2  P3  P4    │  ← Analog Pins
-    │  P5  P6  P7  P8  P9    │  ← Digital Pins
-    │ P10 P11 P12 P13 P14    │
-    │ P15 P16 P19 P20        │
+    │  P0  P1  P2  P3  P4     │  ← Analog Pins
+    │  P5  P6  P7  P8  P9     │  ← Digital Pins
+    │ P10 P11 P12 P13 P14     │
+    │ P15 P16 P19 P20         │
     └─────────────────────────┘
 
 Pin Assignments:
 ┌─────────────────────────────────────────────────────────────┐
-│  MOTOR DRIVER (L298N Mini)                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    │
-│  │ LEFT MOTOR  │    │ RIGHT MOTOR │    │   SERVO     │    │
-│  │ P12 - FWD   │    │ P14 - FWD   │    │ P0  - PWM   │    │
-│  │ P13 - BWD   │    │ P15 - BWD   │    │             │    │
-│  └─────────────┘    └─────────────┘    └─────────────┘    │
+│  MOTOR DRIVER (L298N Mini)                                  │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
+│  │ LEFT MOTOR  │    │ RIGHT MOTOR │    │   SERVO     │      │
+│  │ P12 - FWD   │    │ P14 - FWD   │    │ P1  - PWM   │      │
+│  │ P13 - BWD   │    │ P15 - BWD   │    │             │      │
+│  └─────────────┘    └─────────────┘    └─────────────┘      │
 │                                                             │
-│  SENSORS & DISPLAY                                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    │
-│  │   SONAR     │    │  DISPLAY    │    │ BLUETOOTH   │    │
-│  │ P16 - TRIG  │    │ 5x5 LED     │    │ Built-in    │    │
-│  │ P8  - ECHO  │    │ MATRIX      │    │ UART        │    │
-│  └─────────────┘    └─────────────┘    └─────────────┘    │
+│  SENSORS & DISPLAY                                          │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
+│  │   SONAR     │    │  DISPLAY    │    │ BLUETOOTH   │      │
+│  │ P16 - TRIG  │    │ 5x5 LED     │    │ Built-in    │      │
+│  │ P8  - ECHO  │    │ MATRIX      │    │ UART        │      │
+│  └─────────────┘    └─────────────┘    └─────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 
 Digital Pins:
@@ -55,16 +55,29 @@ Analog Pins:
 ⚠️  LED MATRIX PINS (MAY CAUSE CONFLICTS):
   P3, P4, P6, P7, P9, P10 (Columns)
   P13, P14, P15, P16, P17 (Rows)
+
+⚠️  IMPORTANT: P13, P14, P15, P16 are used by both motors/sonar AND LED matrix.
+  This may cause display issues but won't affect motor/sonar functionality.
+  If LED display problems occur, consider using alternative pins.
 ```
 
 ### Required Components
 - micro:bit v2
-- L298N Mini motor driver
+- L298N Mini motor driver (4-pin PWM control)
 - 2x DC motors with wheels
 - Servo motor (SG90 or similar)
 - Ultrasonic sensor (HC-SR04)
 - Power supply (6-12V for motors)
 - Jumper wires and breadboard
+
+### L298N Mini Wiring
+The L298N Mini uses a simplified 4-pin PWM control system:
+- **P12** → L298N IN1 (Left motor forward)
+- **P13** → L298N IN2 (Left motor backward)
+- **P14** → L298N IN3 (Right motor forward)
+- **P15** → L298N IN4 (Right motor backward)
+- **VCC** → 5V power supply
+- **GND** → Common ground
 
 ## 📡 Bluetooth Commands
 
@@ -127,12 +140,16 @@ Robot.Core.Bluetooth    - Bluetooth communication
 #### Servo-Controlled Sonar
 - **Forward mode**: Servo at 0°, measures front obstacles
 - **Backward mode**: Servo at 180°, measures rear obstacles
-- Automatic servo positioning based on movement direction
+- **Automatic positioning**: Servo moves based on movement direction
+- **Single sonar sensor**: One HC-SR04 sensor with servo-controlled direction
+- **Dual distance tracking**: Separate front and back distance measurements
 
 #### Safety Systems
 - **Front collision avoidance**: Stops when front distance < safe threshold
 - **Rear collision avoidance**: Stops when back distance < safe threshold
 - **Configurable thresholds**: Different limits for forward/backward movement
+- **Automatic servo positioning**: Servo moves to 0° for forward, 180° for backward
+- **Direction-aware sensing**: Sonar measures in the direction of movement
 
 #### Smart Telemetry
 - Only sends data when values change (efficient bandwidth usage)
@@ -191,6 +208,8 @@ bluetooth.uartWriteString(JSON.stringify(config));
 3. **Servo not moving**: Check P1 servo power and signal connections
 4. **Bluetooth not connecting**: Ensure micro:bit is in pairing mode
 5. **LED display issues**: P13, P14, P15, P16 are LED matrix pins - may cause conflicts
+6. **Servo not responding**: Check P1 connection and servo power (5V)
+7. **Distance readings erratic**: Ensure sonar sensor is properly connected to P16/P8
 
 ### Debug Information
 - LED matrix shows current status
