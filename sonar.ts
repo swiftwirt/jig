@@ -5,10 +5,12 @@ namespace Robot.Hardware.Sonar {
     const MAX_CM = 300;
 
     export let frontDistance = 999;
-    let lastGood = 999;
+    export let backDistance = 999;
+    let lastGoodFront = 999;
+    let lastGoodBack = 999;
 
     // Configure echo so it doesn't float
-    pins.setPull(DigitalPin.P16, PinPullMode.PullDown);
+    pins.setPull(DigitalPin.P8, PinPullMode.PullDown);
 
     function pingOnce(trigger: DigitalPin, echo: DigitalPin): number {
         // Optional: tiny settle time
@@ -34,15 +36,22 @@ namespace Robot.Hardware.Sonar {
         return arr[1];
     }
 
-    function readFiltered(trigger: DigitalPin, echo: DigitalPin): number {
+    function readFiltered(trigger: DigitalPin, echo: DigitalPin, isFront: boolean): number {
         const a = robustPing(trigger, echo);
         const b = robustPing(trigger, echo);
         const c = robustPing(trigger, echo);
         let m = medianOf3(a, b, c);
 
         // range check + simple hold-last-good
-        if (m === 0 || m < MIN_CM || m > MAX_CM) return lastGood;
-        lastGood = m;
+        if (m === 0 || m < MIN_CM || m > MAX_CM) {
+            return isFront ? lastGoodFront : lastGoodBack;
+        }
+        
+        if (isFront) {
+            lastGoodFront = m;
+        } else {
+            lastGoodBack = m;
+        }
         return m;
     }
 
@@ -50,11 +59,22 @@ namespace Robot.Hardware.Sonar {
         // If PWM is active/noisy, you can skip or delay the ping:
         // if (Robot.Hardware.Motors.motorsRunning) { basic.pause(SENSOR_INTERVAL_MS); return; }
 
-        frontDistance = readFiltered(DigitalPin.P15, DigitalPin.P16);
+        // Measure front distance (servo at 0°)
+        frontDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, true);  // P16=TRIG, P8=ECHO
+        
+        // Measure back distance (servo at 180°)
+        // Note: This assumes the same sonar sensor is used but servo position determines direction
+        backDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, false);  // P16=TRIG, P8=ECHO
 
-        // safety stop
+        // safety stop for forward movement
         if (Robot.Hardware.Motors.currentDir > 0
-            && frontDistance < Robot.Hardware.Motors.SAFE_DISTANCE) {
+            && frontDistance < Robot.Hardware.Motors.getCurrentFrontSafeDistance()) {
+            Robot.Hardware.Motors.stop();
+        }
+        
+        // safety stop for backward movement
+        if (Robot.Hardware.Motors.currentDir < 0
+            && backDistance < Robot.Hardware.Motors.getCurrentBackSafeDistance()) {
             Robot.Hardware.Motors.stop();
         }
 

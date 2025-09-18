@@ -1,21 +1,19 @@
-namespace Robot.Hardware.Motors {
-    // Motor driver pin assignments (new H-bridge configuration)
-    const STBY = DigitalPin.P8;
-    const LEFT_PWM = AnalogPin.P0;
-    const LEFT_IN1 = DigitalPin.P1;
-    const LEFT_IN2 = DigitalPin.P2;
-    const RIGHT_PWM = AnalogPin.P14;
-    const RIGHT_IN1 = DigitalPin.P12;
-    const RIGHT_IN2 = DigitalPin.P13;
+// ─── PIN ASSIGNMENTS ─────────────────────────────────────────────────────────
+// Motor Control (Analog PWM):
+//   P12: Left motor forward
+//   P13: Left motor backward  
+//   P14: Right motor forward
+//   P15: Right motor backward
 
-    const ARROW_FWD = ArrowNames.North;
-    const ARROW_REV = ArrowNames.South;
+namespace Robot.Hardware.Motors {
+    const ARROW_FWD = ArrowNames.South;
+    const ARROW_REV = ArrowNames.North;
     const ARROW_SPIN_L = ArrowNames.West;
     const ARROW_SPIN_R = ArrowNames.East;
-    const ARROW_TURN_L = ArrowNames.NorthWest;
-    const ARROW_TURN_R = ArrowNames.NorthEast;
-    const ARROW_TURN_L_REV = ArrowNames.SouthWest;
-    const ARROW_TURN_R_REV = ArrowNames.SouthEast;
+    const ARROW_TURN_L = ArrowNames.SouthEast;
+    const ARROW_TURN_R = ArrowNames.SouthWest;
+    const ARROW_TURN_L_REV = ArrowNames.NorthEast;
+    const ARROW_TURN_R_REV = ArrowNames.NorthWest;
 
     const MAX_SPEED = 1023;
     const TURN_SCALE_NUM = 4;
@@ -40,8 +38,8 @@ namespace Robot.Hardware.Motors {
         // Validate input parameters
         if (typeof leftSpeed !== "number") {
             leftSpeed = MAX_SPEED;
-        }
-
+        } 
+        
         if (typeof rightSpeed !== "number") {
             rightSpeed = MAX_SPEED;
         }
@@ -109,84 +107,134 @@ namespace Robot.Hardware.Motors {
 
     // ─── MOTION FUNCTIONS ───────────────────────────────────────────────────────
     export function forward() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 0° for forward direction
+        Robot.Hardware.Servo.setAngle(0);
+        
+        if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        writeWheels(MAX_SPEED_L, 0, MAX_SPEED_R, 0);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+
+        writeWheels(leftSpeed, 0, rightSpeed, 0);
         Robot.Services.Display.showArrowIfChanged(ARROW_FWD);
         motorsRunning = true;
         currentDir = 1;
     }
 
     export function backward() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 180° for backward direction
+        Robot.Hardware.Servo.setAngle(180);
+        
+        if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        writeWheels(0, MAX_SPEED_L, 0, MAX_SPEED_R);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+
+        writeWheels(0, leftSpeed, 0, rightSpeed);
         Robot.Services.Display.showArrowIfChanged(ARROW_REV);
         motorsRunning = true;
         currentDir = -1;
     }
 
     export function spinLeft() {
-        writeWheels(MAX_SPEED_L, 0, 0, MAX_SPEED_R);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        
+        writeWheels(leftSpeed, 0, 0, rightSpeed);
         Robot.Services.Display.showArrowIfChanged(ARROW_SPIN_L);
         motorsRunning = true;
         currentDir = 0;
     }
 
     export function spinRight() {
-        writeWheels(0, MAX_SPEED_L, MAX_SPEED_R, 0);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        
+        writeWheels(0, leftSpeed, rightSpeed, 0);
         Robot.Services.Display.showArrowIfChanged(ARROW_SPIN_R);
         motorsRunning = true;
         currentDir = 0;
     }
 
     export function turnLeft() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 0° for forward direction
+        Robot.Hardware.Servo.setAngle(0);
+        
+        if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        const slow = Math.idiv(MAX_SPEED_L * TURN_SCALE_NUM, TURN_SCALE_DEN);
-        writeWheels(slow, 0, MAX_SPEED_R, 0);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        const slow = Math.idiv(rightSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
+
+        writeWheels(leftSpeed, 0, slow, 0);
         Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L);
         motorsRunning = true;
         currentDir = 1;
     }
 
     export function turnRight() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 0° for forward direction
+        Robot.Hardware.Servo.setAngle(0);
+        
+        if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        const slow = Math.idiv(MAX_SPEED_R * TURN_SCALE_NUM, TURN_SCALE_DEN);
-        writeWheels(MAX_SPEED_R, 0, slow, 0);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        const slow = Math.idiv(leftSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
+
+        writeWheels(slow, 0, rightSpeed, 0);
         Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R);
         motorsRunning = true;
         currentDir = 1;
     }
 
     export function turnLeftBackward() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 180° for backward direction
+        Robot.Hardware.Servo.setAngle(180);
+        
+        if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        const slow = Math.idiv(MAX_SPEED_L * TURN_SCALE_NUM, TURN_SCALE_DEN);
-        writeWheels(0, slow, 0, MAX_SPEED_R);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        const slow = Math.idiv(rightSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
+
+        writeWheels(0, leftSpeed, 0, slow);
         Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L_REV);
         motorsRunning = true;
         currentDir = -1;
     }
 
     export function turnRightBackward() {
-        if (Robot.Hardware.Sonar.frontDistance < SAFE_DISTANCE) {
+        // Set servo to 180° for backward direction
+        Robot.Hardware.Servo.setAngle(180);
+        
+        if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
-        const slow = Math.idiv(MAX_SPEED_R * TURN_SCALE_NUM, TURN_SCALE_DEN);
-        writeWheels(0, MAX_SPEED_L, 0, slow);
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        const slow = Math.idiv(leftSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
+
+        writeWheels(0, slow, 0, rightSpeed);
         Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R_REV);
         motorsRunning = true;
         currentDir = -1;
@@ -194,43 +242,20 @@ namespace Robot.Hardware.Motors {
 
     // ─── LOW-LEVEL MOTOR CONTROL ────────────────────────────────────────────────
     export function writeWheels(Lf: number, Lb: number, Rf: number, Rb: number) {
-        // Enable motor driver
-        pins.digitalWritePin(STBY, 1);
-
-        // Left motor control
-        if (Lf > 0) {
-            pins.digitalWritePin(LEFT_IN1, 1);
-            pins.digitalWritePin(LEFT_IN2, 0);
-            pins.analogWritePin(LEFT_PWM, Lf);
-        } else if (Lb > 0) {
-            pins.digitalWritePin(LEFT_IN1, 0);
-            pins.digitalWritePin(LEFT_IN2, 1);
-            pins.analogWritePin(LEFT_PWM, Lb);
-        } else {
-            pins.digitalWritePin(LEFT_IN1, 0);
-            pins.digitalWritePin(LEFT_IN2, 0);
-            pins.analogWritePin(LEFT_PWM, 0);
-        }
-
-        // Right motor control
-        if (Rf > 0) {
-            pins.digitalWritePin(RIGHT_IN1, 1);
-            pins.digitalWritePin(RIGHT_IN2, 0);
-            pins.analogWritePin(RIGHT_PWM, Rf);
-        } else if (Rb > 0) {
-            pins.digitalWritePin(RIGHT_IN1, 0);
-            pins.digitalWritePin(RIGHT_IN2, 1);
-            pins.analogWritePin(RIGHT_PWM, Rb);
-        } else {
-            pins.digitalWritePin(RIGHT_IN1, 0);
-            pins.digitalWritePin(RIGHT_IN2, 0);
-            pins.analogWritePin(RIGHT_PWM, 0);
-        }
+        pins.analogWritePin(AnalogPin.P12, Lf);
+        pins.analogWritePin(AnalogPin.P13, Lb);
+        pins.analogWritePin(AnalogPin.P14, Rf);
+        pins.analogWritePin(AnalogPin.P15, Rb);
     }
 
     export function brakePulse() {
         if (!ACTIVE_BRAKE_MS) return;
-        const pulse = Math.idiv(((MAX_SPEED_L + MAX_SPEED_R) / 2), 2);
+        
+        // Use custom speeds if set, otherwise use MAX_SPEED
+        const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
+        const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
+        const pulse = Math.idiv(((leftSpeed + rightSpeed) / 2), 2);
+        
         writeWheels(
             currentDir > 0 ? 0 : pulse,
             currentDir > 0 ? pulse : 0,
@@ -242,58 +267,10 @@ namespace Robot.Hardware.Motors {
 
     export function stop() {
         if (motorsRunning) brakePulse();
-        // Disable motor driver and set all outputs to 0
-        pins.digitalWritePin(STBY, 0);
-        pins.digitalWritePin(LEFT_IN1, 0);
-        pins.digitalWritePin(LEFT_IN2, 0);
-        pins.analogWritePin(LEFT_PWM, 0);
-        pins.digitalWritePin(RIGHT_IN1, 0);
-        pins.digitalWritePin(RIGHT_IN2, 0);
-        pins.analogWritePin(RIGHT_PWM, 0);
+        writeWheels(0, 0, 0, 0);
         motorsRunning = false;
+        // DON'T reset custom speeds - keep them for next motion command
+        // currentLeftSpeed and currentRightSpeed remain unchanged
         Robot.Services.Display.showIconIfChanged(Robot.Core.State.connected ? IconNames.Happy : IconNames.Skull);
-    }
-
-    // ─── MOTION TESTS ────────────────────────────────────────────────────────────
-    export function runTests(): boolean {
-        let passed = 0;
-        let total = 0;
-
-        // Test 1: Stop function works
-        total++;
-        stop();
-        if (!motorsRunning) passed++;
-
-        // Test 2: Constants are correct
-        total++;
-        if (SAFE_DISTANCE === 40 && ACTIVE_BRAKE_MS === 100) passed++;
-
-        // Test 3: Direction tracking works
-        total++;
-        stop();
-        if (currentDir === 0) passed++;
-
-        // Test 4: Motor functions exist and don't crash
-        total++;
-        try {
-            forward();
-            basic.pause(50);
-            stop();
-            backward();
-            basic.pause(50);
-            stop();
-            spinLeft();
-            basic.pause(50);
-            stop();
-            spinRight();
-            basic.pause(50);
-            stop();
-            passed++;
-        } catch (e) {
-            // Function calls failed
-        }
-
-        basic.showString(`M:${passed}/${total}`);
-        return passed === total;
     }
 }

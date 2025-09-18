@@ -1,13 +1,8 @@
-namespace Robot.Services.Reporter {
-    // ─── TELEMETRY ───────────────────────────────────────────────────────────────
+namespace Robot.Observer {
     let cpuTemp = 0;
-    let ambientTemp = 0;
-    let humidity = 0;
-
     let lastCpuTemp = -999;
     let lastFront = -1;
-    let lastAmbient = 999;
-    let lastHumidity = 999;
+    let lastBack = -1;
 
     export function sendTelemetry() {
         cpuTemp = input.temperature();
@@ -15,21 +10,18 @@ namespace Robot.Services.Reporter {
         const changed =
             cpuTemp !== lastCpuTemp ||
             Robot.Hardware.Sonar.frontDistance !== lastFront ||
-            ambientTemp !== lastAmbient ||
-            humidity !== lastHumidity;
+            Robot.Hardware.Sonar.backDistance !== lastBack;
 
         if (!changed) return;
 
         lastCpuTemp = cpuTemp;
         lastFront = Robot.Hardware.Sonar.frontDistance;
-        lastAmbient = ambientTemp;
-        lastHumidity = humidity;
+        lastBack = Robot.Hardware.Sonar.backDistance;
 
         let p = {
             cpu: cpuTemp,
-            ambient: ambientTemp,
-            humidity: humidity,
-            front: Robot.Hardware.Sonar.frontDistance
+            front: Robot.Hardware.Sonar.frontDistance,
+            back: Robot.Hardware.Sonar.backDistance
         };
 
         bluetooth.uartWriteString(JSON.stringify(p) + "\n");
