@@ -34,9 +34,6 @@ namespace Robot.Core.Dispatcher {
                     const frontDistance = parsed.f;
                     const backDistance = parsed.b;
 
-                    basic.showString(frontDistance, 100);
-                    basic.showString(backDistance, 100);
-
                     // Validate and apply safe distances (20-100cm range)
                     if (frontDistance >= 20 && frontDistance <= 100 && backDistance >= 5 && backDistance <= 200) {
                         Robot.Hardware.Motors.setSafeDistances(frontDistance, backDistance);

@@ -60,11 +60,16 @@ namespace Robot.Hardware.Sonar {
         // if (Robot.Hardware.Motors.motorsRunning) { basic.pause(SENSOR_INTERVAL_MS); return; }
 
         // Measure front distance (servo at 0°)
-        frontDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, true);  // P16=TRIG, P8=ECHO
-        
-        // Measure back distance (servo at 180°)
-        // Note: This assumes the same sonar sensor is used but servo position determines direction
-        backDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, false);  // P16=TRIG, P8=ECHO
+        if (Robot.Hardware.Servo.currentAngle == Robot.Hardware.Servo.FORWARD_ANGLE) {
+            frontDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, true);  // P16=TRIG, P8=ECHO
+            backDistance = -999
+        } else {
+            // Measure back distance (servo at 180°)
+            // Note: This assumes the same sonar sensor is used but servo position determines direction
+            backDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, false);  // P16=TRIG, P8=ECHO
+            frontDistance = -999
+
+        }
 
         // safety stop for forward movement
         if (Robot.Hardware.Motors.currentDir > 0

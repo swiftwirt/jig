@@ -54,20 +54,11 @@ FEATURES:
 namespace Robot.Core.State {
     // ─── GLOBAL STATE ─────────────────────────────────────────────────────────
     export let connected = false;
-    // music.setBuiltInSpeakerEnabled(false) // Uncomment if music extension is available
 
     export function setConnected(value: boolean) {
         connected = value;
         Robot.Core.Events.emit("connectionChanged", value);
     }
-
-    input.onButtonPressed(Button.A, function() {
-        servos.P0.setAngle(3);
-    })
-
-    input.onButtonPressed(Button.B, function () {
-        servos.P0.setAngle(173);
-    })
 }
 
 namespace Robot.Core.Events {
@@ -90,7 +81,10 @@ namespace Robot.Core.Events {
 }
 
 // ─── MAIN RUNLOOP ──────────────────────────────────────────────────────
-// basic.forever(function () {
-//     if (Robot.Core.State.connected) Robot.Observer.sendTelemetry();
-//     basic.pause(1000);
-// });
+Robot.Hardware.Servo.setIdle();
+Robot.Services.Display.showIconIfChanged(IconNames.Happy);
+
+basic.forever(function () {
+    if (Robot.Core.State.connected) Robot.Observer.sendTelemetry();
+    basic.pause(1000);
+});
