@@ -108,7 +108,7 @@ namespace Robot.Hardware.Motors {
     // ─── MOTION FUNCTIONS ───────────────────────────────────────────────────────
     export function forward() {
         // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setAngle(0);
+        Robot.Hardware.Servo.setForward();
         
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
@@ -126,7 +126,7 @@ namespace Robot.Hardware.Motors {
 
     export function backward() {
         // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setAngle(180);
+        Robot.Hardware.Servo.setBackward();
         
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
@@ -166,7 +166,7 @@ namespace Robot.Hardware.Motors {
 
     export function turnLeft() {
         // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setAngle(0);
+        Robot.Hardware.Servo.setForward();
         
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
@@ -185,7 +185,7 @@ namespace Robot.Hardware.Motors {
 
     export function turnRight() {
         // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setAngle(0);
+        Robot.Hardware.Servo.setForward();
         
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
@@ -204,7 +204,7 @@ namespace Robot.Hardware.Motors {
 
     export function turnLeftBackward() {
         // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setAngle(180);
+        Robot.Hardware.Servo.setBackward();
         
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
@@ -223,7 +223,7 @@ namespace Robot.Hardware.Motors {
 
     export function turnRightBackward() {
         // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setAngle(180);
+        Robot.Hardware.Servo.setBackward();
         
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);

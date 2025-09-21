@@ -3,19 +3,20 @@ namespace Robot.Hardware.Servo {
     const SERVO_PIN = AnalogPin.P1;  // Using P1 for servo (avoiding P0 which conflicts with BLE)
     
     // Servo angle constants
-    const FORWARD_ANGLE = 0;    // 0° for forward direction
-    const BACKWARD_ANGLE = 180; // 180° for backward direction
+    const FORWARD_ANGLE = 3;    // 3° for forward direction
+    const BACKWARD_ANGLE = 173; // 173° for backward direction
+    const IDLE_ANGLE = 83;
     
     // Current servo angle
     let currentAngle = FORWARD_ANGLE;
+    setIdle();
     
     // ─── SERVO CONTROL ─────────────────────────────────────────────────────────
-    export function setAngle(angle: number) {
+    function setAngle(angle: number) {
         // Validate angle range (0-180 degrees)
         const clampedAngle = Math.max(0, Math.min(180, angle));
-        
-        // Set servo angle
-        pins.servoWritePin(SERVO_PIN, clampedAngle);
+
+        servos.P0.setAngle(clampedAngle);
         currentAngle = clampedAngle;
     }
     
@@ -26,6 +27,10 @@ namespace Robot.Hardware.Servo {
     
     export function setBackward() {
         setAngle(BACKWARD_ANGLE);
+    }
+
+    export function setIdle() {
+        setAngle(IDLE_ANGLE);
     }
     
     // ─── GET CURRENT ANGLE ────────────────────────────────────────────────────

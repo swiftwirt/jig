@@ -60,6 +60,14 @@ namespace Robot.Core.State {
         connected = value;
         Robot.Core.Events.emit("connectionChanged", value);
     }
+
+    input.onButtonPressed(Button.A, function() {
+        servos.P0.setAngle(3);
+    })
+
+    input.onButtonPressed(Button.B, function () {
+        servos.P0.setAngle(173);
+    })
 }
 
 namespace Robot.Core.Events {
