@@ -56,6 +56,15 @@ namespace Robot.Hardware.Sonar {
     }
 
     basic.forever(function () {
+        // Update servo state tracking
+        Robot.Hardware.Servo.update();
+        
+        // Skip sonar reading if servo is still moving
+        if (Robot.Hardware.Servo.isServoMoving()) {
+            basic.pause(SENSOR_INTERVAL_MS);
+            return;
+        }
+
         // If PWM is active/noisy, you can skip or delay the ping:
         // if (Robot.Hardware.Motors.motorsRunning) { basic.pause(SENSOR_INTERVAL_MS); return; }
 
