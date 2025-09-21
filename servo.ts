@@ -15,9 +15,14 @@ namespace Robot.Hardware.Servo {
     function setAngle(angle: number) {
         // Validate angle range (0-180 degrees)
         const clampedAngle = Math.max(0, Math.min(180, angle));
-
-        servos.P0.setAngle(clampedAngle);
-        currentAngle = clampedAngle;
+        
+        // Only move servo if angle actually changed
+        if (clampedAngle !== currentAngle) {
+            servos.P1.setAngle(clampedAngle);
+            currentAngle = clampedAngle;
+            // Give servo time to move to new position
+            basic.pause(100);
+        }
     }
     
     // ─── CONVENIENCE FUNCTIONS ────────────────────────────────────────────────
