@@ -5,37 +5,19 @@ namespace Robot.Hardware.Servo {
     const IDLE_ANGLE = 83;
     
     // Current servo angle
-    export let currentAngle = FORWARD_ANGLE;
-    
-    // Servo state tracking
-    let targetAngle = FORWARD_ANGLE;
-    let isMoving = false;
-    let moveStartTime = 0;
-    const SERVO_MOVE_TIME_MS = 500; // Time for servo to complete movement
-    
-    // ─── SERVO STATE UPDATE ────────────────────────────────────────────────────
-    function updateServoState() {
-        if (isMoving) {
-            const elapsed = input.runningTime() - moveStartTime;
-            if (elapsed >= SERVO_MOVE_TIME_MS) {
-                // Servo movement completed
-                currentAngle = targetAngle;
-                isMoving = false;
-            }
-        }
-    }
+    export let currentAngle = IDLE_ANGLE;
     
     // ─── SERVO CONTROL ─────────────────────────────────────────────────────────
     function setAngle(angle: number) {
         // Validate angle range (0-180 degrees)
         const clampedAngle = Math.max(0, Math.min(180, angle));
         
-        // Only move servo if angle actually changed and not currently moving
-        if (clampedAngle !== currentAngle && !isMoving) {
+        // Only move servo if angle actually changed
+        if (clampedAngle !== currentAngle) {
             servos.P1.setAngle(clampedAngle);
-            targetAngle = clampedAngle;
-            isMoving = true;
-            moveStartTime = input.runningTime();
+            currentAngle = clampedAngle;
+            // Give servo time to move to new position
+            basic.pause(300);
         }
     }
     
@@ -62,16 +44,8 @@ namespace Robot.Hardware.Servo {
         setAngle(FORWARD_ANGLE);
     }
     
-    // ─── SERVO STATE MANAGEMENT ────────────────────────────────────────────────
-    export function update() {
-        updateServoState();
-    }
-    
+    // ─── SERVO STATE QUERIES ───────────────────────────────────────────────────
     export function isServoMoving(): boolean {
-        return isMoving;
-    }
-    
-    export function getTargetAngle(): number {
-        return targetAngle;
+        return false; // Simple version - no moving state
     }
 }

@@ -56,24 +56,15 @@ namespace Robot.Hardware.Sonar {
     }
 
     basic.forever(function () {
-        // Update servo state tracking
-        Robot.Hardware.Servo.update();
-        
-        // Skip sonar reading if servo is still moving
-        if (Robot.Hardware.Servo.isServoMoving()) {
-            basic.pause(SENSOR_INTERVAL_MS);
-            return;
-        }
-
         // If PWM is active/noisy, you can skip or delay the ping:
         // if (Robot.Hardware.Motors.motorsRunning) { basic.pause(SENSOR_INTERVAL_MS); return; }
 
-        // Measure front distance (servo at 0°)
+        // Measure front distance (servo at 3°)
         if (Robot.Hardware.Servo.currentAngle == Robot.Hardware.Servo.FORWARD_ANGLE) {
             frontDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, true);  // P16=TRIG, P8=ECHO
             backDistance = -999
         } else {
-            // Measure back distance (servo at 180°)
+            // Measure back distance (servo at 173°)
             // Note: This assumes the same sonar sensor is used but servo position determines direction
             backDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, false);  // P16=TRIG, P8=ECHO
             frontDistance = -999
