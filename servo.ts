@@ -1,6 +1,6 @@
 namespace Robot.Hardware.Servo {
     // Servo angle constants
-    export const FORWARD_ANGLE = 3;    // 3° for forward direction
+    export const FORWARD_ANGLE = 0;    // 3° for forward direction
     export const BACKWARD_ANGLE = 173; // 173° for backward direction
     const IDLE_ANGLE = 83;
     
@@ -23,7 +23,7 @@ namespace Robot.Hardware.Servo {
                 moveTime = 200; // Reduced from 300ms to prevent long power draw
             }
             
-            servos.P1.setAngle(clampedAngle);
+            servos.P2.setAngle(clampedAngle);
             currentAngle = clampedAngle;
             basic.pause(moveTime);
         }

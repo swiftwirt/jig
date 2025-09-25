@@ -62,12 +62,12 @@ namespace Robot.Hardware.Sonar {
         // Measure front distance (servo at 3°)
         if (Robot.Hardware.Servo.currentAngle == Robot.Hardware.Servo.FORWARD_ANGLE) {
             frontDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, true);  // P16=TRIG, P8=ECHO
-            backDistance = -999
+            backDistance = 999
         } else {
             // Measure back distance (servo at 173°)
             // Note: This assumes the same sonar sensor is used but servo position determines direction
             backDistance = readFiltered(DigitalPin.P16, DigitalPin.P8, false);  // P16=TRIG, P8=ECHO
-            frontDistance = -999
+            frontDistance = 999
 
         }
 
