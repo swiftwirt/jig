@@ -23,6 +23,7 @@ namespace Robot.Hardware.Motors {
 
     export let motorsRunning = false;
     export let currentDir = 0;        // +1 forward, -1 backward, 0 spin/stop
+    let isChangingDirection = false;  // Prevent concurrent direction changes
 
     // ─── MOTOR SPEED STATE ─────────────────────────────────────────────────────
     let currentLeftSpeed = 0;
@@ -105,41 +106,128 @@ namespace Robot.Hardware.Motors {
         currentBackSafeDistance = DEFAULT_SAFE_DISTANCE;
     }
 
+    // ─── POWER MANAGEMENT FUNCTIONS ─────────────────────────────────────────────
+    function safeStop() {
+        if (motorsRunning) {
+            // Gentle brake pulse to avoid back-EMF spikes
+            const pulse = Math.idiv(MAX_SPEED, 4); // Reduced brake intensity
+            writeWheels(
+                currentDir > 0 ? 0 : pulse,
+                currentDir > 0 ? pulse : 0,
+                currentDir > 0 ? 0 : pulse,
+                currentDir > 0 ? pulse : 0
+            );
+            basic.pause(50); // Shorter brake time
+        }
+        writeWheels(0, 0, 0, 0);
+        motorsRunning = false;
+        basic.pause(100); // Allow motors to fully stop
+    }
+
+    function gradualStart(leftFwd: number, leftBwd: number, rightFwd: number, rightBwd: number) {
+        // Start at 25% power to reduce initial surge
+        const quarter = Math.idiv(MAX_SPEED, 4);
+        writeWheels(
+            leftFwd > 0 ? quarter : 0,
+            leftBwd > 0 ? quarter : 0,
+            rightFwd > 0 ? quarter : 0,
+            rightBwd > 0 ? quarter : 0
+        );
+        basic.pause(50);
+        
+        // Ramp to 50% power
+        const half = Math.idiv(MAX_SPEED, 2);
+        writeWheels(
+            leftFwd > 0 ? half : 0,
+            leftBwd > 0 ? half : 0,
+            rightFwd > 0 ? half : 0,
+            rightBwd > 0 ? half : 0
+        );
+        basic.pause(50);
+        
+        // Finally to full power
+        writeWheels(leftFwd, leftBwd, rightFwd, rightBwd);
+    }
+
+    function changeDirectionSafely(newDir: number, servoAction: () => void, motorAction: () => void) {
+        if (isChangingDirection) return; // Prevent concurrent changes
+        isChangingDirection = true;
+        
+        // Step 1: Stop motors safely if running
+        if (motorsRunning) {
+            safeStop();
+        }
+        
+        // Step 2: Move servo to new position (power-hungry operation)
+        servoAction();
+        
+        // Step 3: Small delay to let servo settle and power stabilize
+        basic.pause(150);
+        
+        // Step 4: Start motors gradually
+        motorAction();
+        
+        currentDir = newDir;
+        isChangingDirection = false;
+    }
+
     // ─── MOTION FUNCTIONS ───────────────────────────────────────────────────────
     export function forward() {
-        // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setForward();
-        
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
 
-        writeWheels(leftSpeed, 0, rightSpeed, 0);
-        Robot.Services.Display.showArrowIfChanged(ARROW_FWD);
-        motorsRunning = true;
-        currentDir = 1;
+        // If already moving forward, just update speeds without direction change
+        if (currentDir === 1 && !isChangingDirection) {
+            writeWheels(leftSpeed, 0, rightSpeed, 0);
+            Robot.Services.Display.showArrowIfChanged(ARROW_FWD);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(1, 
+            () => Robot.Hardware.Servo.setForward(),
+            () => {
+                gradualStart(leftSpeed, 0, rightSpeed, 0);
+                Robot.Services.Display.showArrowIfChanged(ARROW_FWD);
+                motorsRunning = true;
+            }
+        );
     }
 
     export function backward() {
-        // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setBackward();
-        
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
 
-        writeWheels(0, leftSpeed, 0, rightSpeed);
-        Robot.Services.Display.showArrowIfChanged(ARROW_REV);
-        motorsRunning = true;
-        currentDir = -1;
+        // If already moving backward, just update speeds without direction change
+        if (currentDir === -1 && !isChangingDirection) {
+            writeWheels(0, leftSpeed, 0, rightSpeed);
+            Robot.Services.Display.showArrowIfChanged(ARROW_REV);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(-1, 
+            () => Robot.Hardware.Servo.setBackward(),
+            () => {
+                gradualStart(0, leftSpeed, 0, rightSpeed);
+                Robot.Services.Display.showArrowIfChanged(ARROW_REV);
+                motorsRunning = true;
+            }
+        );
     }
 
     export function spinLeft() {
@@ -147,7 +235,12 @@ namespace Robot.Hardware.Motors {
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         
-        writeWheels(leftSpeed, 0, 0, rightSpeed);
+        // Stop motors first if running in different direction
+        if (motorsRunning && currentDir !== 0) {
+            safeStop();
+        }
+        
+        gradualStart(leftSpeed, 0, 0, rightSpeed);
         Robot.Services.Display.showArrowIfChanged(ARROW_SPIN_L);
         motorsRunning = true;
         currentDir = 0;
@@ -158,86 +251,135 @@ namespace Robot.Hardware.Motors {
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         
-        writeWheels(0, leftSpeed, rightSpeed, 0);
+        // Stop motors first if running in different direction
+        if (motorsRunning && currentDir !== 0) {
+            safeStop();
+        }
+        
+        gradualStart(0, leftSpeed, rightSpeed, 0);
         Robot.Services.Display.showArrowIfChanged(ARROW_SPIN_R);
         motorsRunning = true;
         currentDir = 0;
     }
 
     export function turnLeft() {
-        // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setForward();
-        
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         const slow = Math.idiv(rightSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
 
-        writeWheels(leftSpeed, 0, slow, 0);
-        Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L);
-        motorsRunning = true;
-        currentDir = 1;
+        // If already turning forward, just update speeds
+        if (currentDir === 1 && !isChangingDirection) {
+            writeWheels(leftSpeed, 0, slow, 0);
+            Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(1, 
+            () => Robot.Hardware.Servo.setForward(),
+            () => {
+                gradualStart(leftSpeed, 0, slow, 0);
+                Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L);
+                motorsRunning = true;
+            }
+        );
     }
 
     export function turnRight() {
-        // Set servo to 0° for forward direction
-        Robot.Hardware.Servo.setForward();
-        
         if (Robot.Hardware.Sonar.frontDistance < currentFrontSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         const slow = Math.idiv(leftSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
 
-        writeWheels(slow, 0, rightSpeed, 0);
-        Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R);
-        motorsRunning = true;
-        currentDir = 1;
+        // If already turning forward, just update speeds
+        if (currentDir === 1 && !isChangingDirection) {
+            writeWheels(slow, 0, rightSpeed, 0);
+            Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(1, 
+            () => Robot.Hardware.Servo.setForward(),
+            () => {
+                gradualStart(slow, 0, rightSpeed, 0);
+                Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R);
+                motorsRunning = true;
+            }
+        );
     }
 
     export function turnLeftBackward() {
-        // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setBackward();
-        
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         const slow = Math.idiv(rightSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
 
-        writeWheels(0, leftSpeed, 0, slow);
-        Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L_REV);
-        motorsRunning = true;
-        currentDir = -1;
+        // If already turning backward, just update speeds
+        if (currentDir === -1 && !isChangingDirection) {
+            writeWheels(0, leftSpeed, 0, slow);
+            Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L_REV);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(-1, 
+            () => Robot.Hardware.Servo.setBackward(),
+            () => {
+                gradualStart(0, leftSpeed, 0, slow);
+                Robot.Services.Display.showArrowIfChanged(ARROW_TURN_L_REV);
+                motorsRunning = true;
+            }
+        );
     }
 
     export function turnRightBackward() {
-        // Set servo to 180° for backward direction
-        Robot.Hardware.Servo.setBackward();
-        
         if (Robot.Hardware.Sonar.backDistance < currentBackSafeDistance) {
             stop(); Robot.Services.Display.showIconIfChanged(IconNames.No);
             return;
         }
+        
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
         const slow = Math.idiv(leftSpeed * TURN_SCALE_NUM, TURN_SCALE_DEN);
 
-        writeWheels(0, slow, 0, rightSpeed);
-        Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R_REV);
-        motorsRunning = true;
-        currentDir = -1;
+        // If already turning backward, just update speeds
+        if (currentDir === -1 && !isChangingDirection) {
+            writeWheels(0, slow, 0, rightSpeed);
+            Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R_REV);
+            motorsRunning = true;
+            return;
+        }
+
+        // Safe direction change with power management
+        changeDirectionSafely(-1, 
+            () => Robot.Hardware.Servo.setBackward(),
+            () => {
+                gradualStart(0, slow, 0, rightSpeed);
+                Robot.Services.Display.showArrowIfChanged(ARROW_TURN_R_REV);
+                motorsRunning = true;
+            }
+        );
     }
 
     // ─── LOW-LEVEL MOTOR CONTROL ────────────────────────────────────────────────
@@ -249,12 +391,13 @@ namespace Robot.Hardware.Motors {
     }
 
     export function brakePulse() {
+        // Deprecated - use safeStop() instead for power management
         if (!ACTIVE_BRAKE_MS) return;
         
         // Use custom speeds if set, otherwise use MAX_SPEED
         const leftSpeed = currentLeftSpeed > 0 ? currentLeftSpeed : MAX_SPEED;
         const rightSpeed = currentRightSpeed > 0 ? currentRightSpeed : MAX_SPEED;
-        const pulse = Math.idiv(((leftSpeed + rightSpeed) / 2), 2);
+        const pulse = Math.idiv(((leftSpeed + rightSpeed) / 2), 4); // Reduced intensity
         
         writeWheels(
             currentDir > 0 ? 0 : pulse,
@@ -262,15 +405,15 @@ namespace Robot.Hardware.Motors {
             currentDir > 0 ? 0 : pulse,
             currentDir > 0 ? pulse : 0
         );
-        basic.pause(ACTIVE_BRAKE_MS);
+        basic.pause(Math.idiv(ACTIVE_BRAKE_MS, 2)); // Shorter time
     }
 
     export function stop() {
-        if (motorsRunning) brakePulse();
-        writeWheels(0, 0, 0, 0);
-        motorsRunning = false;
+        // Use safe stop to prevent power spikes
+        safeStop();
         // DON'T reset custom speeds - keep them for next motion command
         // currentLeftSpeed and currentRightSpeed remain unchanged
         Robot.Services.Display.showIconIfChanged(Robot.Core.State.connected ? IconNames.Happy : IconNames.Skull);
+        currentDir = 0;
     }
 }

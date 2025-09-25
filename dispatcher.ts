@@ -1,10 +1,40 @@
 namespace Robot.Core.Dispatcher {
+    // ─── COMMAND DEBOUNCING ─────────────────────────────────────────────────────
+    let lastCommand = "";
+    let lastCommandTime = 0;
+    const COMMAND_DEBOUNCE_MS = 150; // Prevent rapid direction changes
+
     export function dispatch(cmd: string) {
         // Try to parse as JSON settings message first
         if (!tryParseSettingsMessage(cmd)) {
-            // Handle existing numeric commands
-            executeCmd(cmd)
+            // Handle existing numeric commands with debouncing
+            executeCmdWithDebouncing(cmd);
         }
+    }
+
+    function executeCmdWithDebouncing(cmd: string) {
+        const currentTime = input.runningTime();
+        
+        // Allow immediate execution of same command (speed changes, etc.)
+        if (cmd === lastCommand) {
+            executeCmd(cmd);
+            return;
+        }
+        
+        // For direction changes, enforce debouncing
+        if (isDirectionCommand(cmd) && isDirectionCommand(lastCommand)) {
+            if (currentTime - lastCommandTime < COMMAND_DEBOUNCE_MS) {
+                return; // Ignore rapid direction changes
+            }
+        }
+        
+        lastCommand = cmd;
+        lastCommandTime = currentTime;
+        executeCmd(cmd);
+    }
+
+    function isDirectionCommand(cmd: string): boolean {
+        return cmd === "1" || cmd === "2" || cmd === "5" || cmd === "6" || cmd === "7" || cmd === "8";
     }
 
     // ─── SETTINGS MESSAGE HANDLING ──────────────────────────────────────────────

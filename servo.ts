@@ -14,10 +14,18 @@ namespace Robot.Hardware.Servo {
         
         // Only move servo if angle actually changed
         if (clampedAngle !== currentAngle) {
+            // Calculate movement time based on angle difference (power-aware timing)
+            const angleDiff = Math.abs(clampedAngle - currentAngle);
+            let moveTime = 150; // Base time for small movements
+            
+            // Large movements (like forward->backward) need more time but less than before
+            if (angleDiff > 90) {
+                moveTime = 200; // Reduced from 300ms to prevent long power draw
+            }
+            
             servos.P1.setAngle(clampedAngle);
             currentAngle = clampedAngle;
-            // Give servo time to move to new position
-            basic.pause(300);
+            basic.pause(moveTime);
         }
     }
     
